@@ -1,8 +1,4 @@
-#include <inttypes.h>
-#include <string>
-
-//TODO: Complete remaining instruction and tokens for it
-//TODO: Tokenizer
+#include <stdint.h>
 
 struct Register{
     uint64_t value;
@@ -75,7 +71,7 @@ enum Opcode{
     STA4 = 28,
     STA5 = 29,
     STA6 = 30,
-    STJ = 32, // STORE THE CONTENTS OF JUMP REGISTER
+    STJ = 32,
     STZ = 33, // clears the content of the memory
 
 
@@ -223,55 +219,15 @@ uint64_t create_instruction(Instruction is){
     return result;
 }
 
-enum TokenKind{
-    // instruction token
-    TOKEN_LDA, TOKEN_LDX, TOKEN_LD1, TOKEN_LD2, TOKEN_LD3, TOKEN_LD4, TOKEN_LD5, TOKEN_LD6, TOKEN_LDAN, TOKEN_LD1N, TOKEN_LD2N, TOKEN_LD3N, TOKEN_LD4N, TOKEN_LD5N, TOKEN_LD6N, TOKEN_LDXN,
-    TOKEN_STA, TOKEN_STX, TOKEN_STA1, TOKEN_STA2, TOKEN_STA3, TOKEN_STA4, TOKEN_STA5, TOKEN_STA6, TOKEN_STJ, TOKEN_STZ,
+Instruction create_instruction(uint64_t value){
+    Instruction is;
+    is.op = static_cast<Opcode>(value & 63);
+    is.F = (value >> 6) & 63;
+    is.I = (value >> 12) & 63;
+    is.AA = value >> 18;
 
-    TOKEN_ADD, TOKEN_SUB, TOKEN_MUL, TOKEN_DIV,
-
-    TOKEN_CMPA, TOKEN_CMPX, TOKEN_CMP1, TOKEN_CMP2, TOKEN_CMP3, TOKEN_CMP4, TOKEN_CMP5, TOKEN_CMP6,
-
-    TOKEN_JMP, TOKEN_JSP, TOKEN_JOV, TOKEN_JNOV, 
-    TOKEN_JL, TOKEN_JE, TOKEN_JG, TOKEN_JGE, TOKEN_JNE, TOKEN_JLE,
-    TOKEN_JAN, TOKEN_JAZ, TOKEN_JAP, TOKEN_JANN, TOKEN_JNZ, TOKEN_JANP,
-    TOKEN_JXN, TOKEN_JXZ, TOKEN_JXP, TOKEN_JXNN, TOKEN_JXNZ, TOKEN_JXNP,
-    TOKEN_J1N, TOKEN_J1Z, TOKEN_J1P, TOKEN_J1NN, TOKEN_J1NZ, TOKEN_J1NP,
-    TOKEN_J2N, TOKEN_J2Z, TOKEN_J2P, TOKEN_J2NN, TOKEN_J2NZ, TOKEN_J2NP,
-    TOKEN_J3N, TOKEN_J3Z, TOKEN_J3P, TOKEN_J3NN, TOKEN_J3NZ, TOKEN_J3NP,
-    TOKEN_J4N, TOKEN_J4Z, TOKEN_J4P, TOKEN_J4NN, TOKEN_J4NZ, TOKEN_J4NP,
-    TOKEN_J5N, TOKEN_J5Z, TOKEN_J5P, TOKEN_J5NN, TOKEN_J5NZ, TOKEN_J5NP,
-    TOKEN_J6N, TOKEN_J6Z, TOKEN_J6P, TOKEN_J6NN, TOKEN_J6NZ, TOKEN_J6NP,
-
-    TOKEN_REG_A, TOKEN_REG_X, TOKEN_REG_I1, TOKEN_REG_I2, TOKEN_REG_I3, TOKEN_REG_I4, TOKEN_REG_I5, TOKEN_REG_I6,
-
-    TOKEN_ID, TOKEN_COLON, TOKEN_NUMBER, TOKEN_COMMA, TOKEN_ERROR, TOKEN_EOI,
-
-};
-
-
-std::string keywords[] =  {
-    "LDA", "LDX", "LD1", "LD2", "LD3", "LD4", "LD5", "LD6", "LDAN", "LD1N", "LD2N", "LD3N", "LD4N", "LD5N", "LD6N", "LDXN",
-    "STA", "STX", "STA1", "STA2", "STA3", "STA4", "STA5", "STA6", "STJ", "STZ",
-
-    "ADD", "SUB", "MUL", "DIV",
-
-    "CMPA", "CMPX", "CMP1", "CMP2", "CMP3", "CMP4", "CMP5", "CMP6",
-
-    "JMP", "JSP", "JOV", "JNOV", 
-    "JL", "JE", "JG", "JGE", "JNE", "JLE",
-    "JAN", "JAZ", "JAP", "JANN", "JNZ", "JANP",
-    "JXN", "JXZ", "JXP", "JXNN", "JXNZ", "JXNP",
-    "J1N", "J1Z", "J1P", "J1NN", "J1NZ", "J1NP",
-    "J2N", "J2Z", "J2P", "J2NN", "J2NZ", "J2NP",
-    "J3N", "J3Z", "J3P", "J3NN", "J3NZ", "J3NP",
-    "J4N", "J4Z", "J4P", "J4NN", "J4NZ", "J4NP",
-    "J5N", "J5Z", "J5P", "J5NN", "J5NZ", "J5NP",
-    "J6N", "J6Z", "J6P", "J6NN", "J6NZ", "J6NP",
-
-    "rA", "rX", "rI1", "rI2", "rI3", "rI4", "rI5", "rI6",
-};
-
+    return is;
+}
 
 
 uint64_t memory[4095];
@@ -279,24 +235,4 @@ uint64_t memory[4095];
 void interpret(MIX *mp, uint32_t address){
     Instruction instruction(address);
     mp->A.value = memory[instruction.AA + (instruction.I == 0? 0: mp->I[instruction.I + 1].value)];
-}
-
-
-
-#include <stdio.h>
-int main(){
-    MIX mix;
-    Instruction instr = Instruction{
-        11,
-        2,
-        2000,
-        LDA
-    };
-    uint64_t op = create_instruction(instr);
-    instr = create_instruction(op);
-
-    memory[2000] = 300;
-    interpret(&mix, op);
-
-    printf("%ld\n", mix.A.value);
 }
