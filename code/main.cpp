@@ -90,8 +90,12 @@ enum Opcode{
 
     //Comparison operator
     // when F = (0:0) equal operation occur because -0 = +0
-    CMPA = 56,
-    CMPX = 63,
+    //Comparison operators
+    // sets LESS, GREATER, EQUAL
+    CMPA = 56, // C= 56, F = field, if F does not include the sign position the fields are both considered non negative
+                // otherewise sign is taken into consideration
+
+    CMPX = 63, // compare X
     CMP1 = 57,
     CMP2 = 58,
     CMP3 = 59,
@@ -173,6 +177,38 @@ enum Opcode{
     J6NZ = 46 | (4 << 6),
     J6NP = 46 | (5 << 6), // zero or negative
 
+    // Increase decrease instruction
+    INCA = 48, // increase A
+    INCX = 55, // increase X
+    INC1 = 49, 
+    INC2 = 50,
+    INC3 = 51,
+    INC4 = 52,
+    INC5 = 53,
+    INC6 = 54,
+
+    // Increase decrease instruction
+    DECA = 48, // increase A
+    DECX = 55, // increase X
+    DEC1 = 49, 
+    DEC2 = 50,
+    DEC3 = 51,
+    DEC4 = 52,
+    DEC5 = 53,
+    DEC6 = 54,
+
+
+    // shift operators
+    SLA = 6, // shift left A
+    SRA = 6 | (1 << 6), // shift right A
+    SLAX = 6 | (2 << 6), // shift left AX
+    SRAX = 6 | (3 << 6), // shift left AX
+    SLC = 6 | (4 << 6), // shift left AX circularly
+    SRC = 6 | (5 << 6), // shift left AX circularly 
+
+    NOP = 0, 
+    HLT = 5 | (2 << 6), // C = 5, F= 2,   
+
 };
 
 struct Instruction{
@@ -225,13 +261,26 @@ uint64_t create_instruction(Instruction is){
 
 enum TokenKind{
     // instruction token
+    // load instruction token
     TOKEN_LDA, TOKEN_LDX, TOKEN_LD1, TOKEN_LD2, TOKEN_LD3, TOKEN_LD4, TOKEN_LD5, TOKEN_LD6, TOKEN_LDAN, TOKEN_LD1N, TOKEN_LD2N, TOKEN_LD3N, TOKEN_LD4N, TOKEN_LD5N, TOKEN_LD6N, TOKEN_LDXN,
+
+    // store instruction token
     TOKEN_STA, TOKEN_STX, TOKEN_STA1, TOKEN_STA2, TOKEN_STA3, TOKEN_STA4, TOKEN_STA5, TOKEN_STA6, TOKEN_STJ, TOKEN_STZ,
 
+    // arithmetic instruction token
     TOKEN_ADD, TOKEN_SUB, TOKEN_MUL, TOKEN_DIV,
 
+    // compare instruction
     TOKEN_CMPA, TOKEN_CMPX, TOKEN_CMP1, TOKEN_CMP2, TOKEN_CMP3, TOKEN_CMP4, TOKEN_CMP5, TOKEN_CMP6,
 
+    // Increase decrease instruction
+    TOKEN_INCA,TOKEN_INCX,TOKEN_INC1,TOKEN_INC2,TOKEN_INC3,TOKEN_INC4,TOKEN_INC5,TOKEN_INC6,
+    
+    // Increase decrease instruction
+    TOKEN_DECA,TOKEN_DECX,TOKEN_DEC1,TOKEN_DEC2,TOKEN_DEC3,TOKEN_DEC4,TOKEN_DEC5,TOKEN_DEC6,
+
+
+    // jump instruction
     TOKEN_JMP, TOKEN_JSP, TOKEN_JOV, TOKEN_JNOV, 
     TOKEN_JL, TOKEN_JE, TOKEN_JG, TOKEN_JGE, TOKEN_JNE, TOKEN_JLE,
     TOKEN_JAN, TOKEN_JAZ, TOKEN_JAP, TOKEN_JANN, TOKEN_JNZ, TOKEN_JANP,
@@ -242,6 +291,12 @@ enum TokenKind{
     TOKEN_J4N, TOKEN_J4Z, TOKEN_J4P, TOKEN_J4NN, TOKEN_J4NZ, TOKEN_J4NP,
     TOKEN_J5N, TOKEN_J5Z, TOKEN_J5P, TOKEN_J5NN, TOKEN_J5NZ, TOKEN_J5NP,
     TOKEN_J6N, TOKEN_J6Z, TOKEN_J6P, TOKEN_J6NN, TOKEN_J6NZ, TOKEN_J6NP,
+
+    // shift operation
+    TOKEN_SLA, TOKEN_SRA, TOKEN_SLAX, TOKEN_SRAX, TOKEN_SLC, TOKEN_SRC,
+
+    // halt and no op 
+    TOKEN_NOP, TOKEN_HLT,
 
     TOKEN_REG_A, TOKEN_REG_X, TOKEN_REG_I1, TOKEN_REG_I2, TOKEN_REG_I3, TOKEN_REG_I4, TOKEN_REG_I5, TOKEN_REG_I6,
 
@@ -268,6 +323,16 @@ std::string keywords[] =  {
     "J4N", "J4Z", "J4P", "J4NN", "J4NZ", "J4NP",
     "J5N", "J5Z", "J5P", "J5NN", "J5NZ", "J5NP",
     "J6N", "J6Z", "J6P", "J6NN", "J6NZ", "J6NP",
+
+
+    // Increase decrease instruction
+    "INCA","INCX","INC1","INC2","INC3","INC4","INC5","INC6",
+    
+    // Increase decrease instruction
+    "DECA","DECX","DEC1","DEC2","DEC3","DEC4","DEC5","DEC6",
+
+    "SLA", "SRA", "SLAX", "SRAX", "SLC", "SRC",
+    "NOP", "HLT",
 
     "rA", "rX", "rI1", "rI2", "rI3", "rI4", "rI5", "rI6",
 };
