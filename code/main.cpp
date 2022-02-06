@@ -152,7 +152,7 @@ int main(){
 			printf("%d %s ", (int32_t)tokenizer.id.size(), tokenizer.id.c_str());
 		}
 		else {
-			printf("%s ", keywords[tokenizer.kind].c_str());
+			printf("%.*s ", (int)keywords[tokenizer.kind].length(), keywords[tokenizer.kind].data());
 		} 
     }
 }

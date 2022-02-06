@@ -1,4 +1,5 @@
 SRC_FILES="../code/main.cpp ../code/tokenizer.h"
+GCC_FLAGS="-g -std=c++17 -pedantic"
 
 if [ ! -d "bin/" ]
 then 
@@ -7,7 +8,7 @@ fi
 
 cd bin/
 
-g++ -g -Wall $SRC_FILES -o MIX
+g++ $GCC_FLAGS $SRC_FILES -o MIX
 
 
 cd ../

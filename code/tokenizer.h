@@ -227,7 +227,7 @@ enum TokenKind{
 };
 
 
-std::string keywords[] =  {
+const std::string_view keywords[] =  {
     "LDA", "LDX", "LD1", "LD2", "LD3", "LD4", "LD5", "LD6", "LDAN", "LD1N", "LD2N", "LD3N", "LD4N", "LD5N", "LD6N", "LDXN",
     "STA", "STX", "STA1", "STA2", "STA3", "STA4", "STA5", "STA6", "STJ", "STZ",
 
@@ -270,7 +270,7 @@ struct Tokenizer{
 #define ArrayCount(a) (int)(sizeof(a) / sizeof(a[0]))
 #define min(a, b) a < b? a: b
 
-bool is_equal_case_insensitive(const std::string& s1, const std::string s2){
+bool is_equal_case_insensitive(std::string_view s1, const std::string s2){
     const int size_1 = s1.size();
     const int size_2 = s2.size();
 
