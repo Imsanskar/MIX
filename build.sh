@@ -1,4 +1,4 @@
-SRC_FILES="../code/main.cpp ../code/lexer.h"
+SRC_FILES="../code/main.cpp ../code/tokenizer.h"
 
 if [ ! -d "bin/" ]
 then 
