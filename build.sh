@@ -1,4 +1,4 @@
-SRC_FILES="../code/main.cpp ../code/tokenizer.h"
+SRC_FILES="../code/main.cpp"
 GCC_FLAGS="-g -std=c++17 -pedantic"
 
 if [ ! -d "bin/" ]

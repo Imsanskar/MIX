@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -35,12 +36,12 @@ enum Opcode{
     // Storing operation
     STA = 24,
     STX = 31,
-    STA1 = 25, // 
-    STA2 = 26,
-    STA3 = 27,
-    STA4 = 28,
-    STA5 = 29,
-    STA6 = 30,
+    ST1 = 25, // 
+    ST2 = 26,
+    ST3 = 27,
+    ST4 = 28,
+    ST5 = 29,
+    ST6 = 30,
     STJ = 32, // STORE THE CONTENTS OF JUMP REGISTER
     STZ = 33, // clears the content of the memory
 
@@ -185,9 +186,9 @@ enum TokenKind{
     TOKEN_LDA, TOKEN_LDX, TOKEN_LD1, TOKEN_LD2, TOKEN_LD3, TOKEN_LD4, TOKEN_LD5, TOKEN_LD6, TOKEN_LDAN, TOKEN_LD1N, TOKEN_LD2N, TOKEN_LD3N, TOKEN_LD4N, TOKEN_LD5N, TOKEN_LD6N, TOKEN_LDXN,
 
     // store instruction token
-    TOKEN_STA, TOKEN_STX, TOKEN_STA1, TOKEN_STA2, TOKEN_STA3, TOKEN_STA4, TOKEN_STA5, TOKEN_STA6, TOKEN_STJ, TOKEN_STZ,
+    TOKEN_STA, TOKEN_STX, TOKEN_ST1, TOKEN_ST2, TOKEN_ST3, TOKEN_ST4, TOKEN_ST5, TOKEN_ST6, TOKEN_STJ, TOKEN_STZ,
 
-    // arithmetic instruction token
+    // rithmetic instruction token
     TOKEN_ADD, TOKEN_SUB, TOKEN_MUL, TOKEN_DIV,
 
     // compare instruction
