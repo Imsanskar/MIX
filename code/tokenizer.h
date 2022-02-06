@@ -220,7 +220,9 @@ enum TokenKind{
 
     TOKEN_REG_A, TOKEN_REG_X, TOKEN_REG_I1, TOKEN_REG_I2, TOKEN_REG_I3, TOKEN_REG_I4, TOKEN_REG_I5, TOKEN_REG_I6,
 
-    TOKEN_ID, TOKEN_COLON, TOKEN_DOLLAR, TOKEN_NUMBER, TOKEN_COMMA, TOKEN_ERROR, TOKEN_EOI,
+    TOKEN_ID, TOKEN_COLON, TOKEN_DOLLAR, TOKEN_NUMBER, TOKEN_INDIRECT_NUMBER, TOKEN_COMMA, TOKEN_LEFT_BRACKET, TOKEN_RIGHT_BRACKET, 
+    TOKEN_MINUS,
+    TOKEN_ERROR, TOKEN_EOI,
 
 };
 
@@ -265,7 +267,7 @@ struct Tokenizer{
     TokenKind kind;
 };
 
-#define ArrayCount(a) sizeof(a) / sizeof(a[0])
+#define ArrayCount(a) (int)(sizeof(a) / sizeof(a[0]))
 #define min(a, b) a < b? a: b
 
 bool is_equal_case_insensitive(const std::string& s1, const std::string s2){
@@ -349,6 +351,25 @@ bool tokenize(Tokenizer *t){
             }
             t->kind = TOKEN_DOLLAR;
             t->id = "$";
+            t->ptr = ptr;
+
+            return true;
+        }
+        
+        if(*ptr == '-'){
+            t->id = "-";
+            t->kind = TOKEN_MINUS;
+            ++ptr;
+            t->ptr = ptr;
+
+            return true;
+        }
+        
+        if(*ptr == ':'){
+            t->id = ":";
+            t->kind = TOKEN_COLON;
+            ++ptr;
+            t->ptr = ptr;
 
             return true;
         }
@@ -356,6 +377,26 @@ bool tokenize(Tokenizer *t){
         if(*ptr == ','){
             t->id = ",";
             t->kind = TOKEN_COMMA;
+            ++ptr;
+            t->ptr = ptr;
+
+            return true;
+        }
+
+        if(*ptr == '('){
+            t->id = "(";
+            t->kind = TOKEN_LEFT_BRACKET;
+            ++ptr;
+            t->ptr = ptr;
+
+            return true;
+        }
+
+        if(*ptr == ')'){
+            t->id = ")";
+            t->kind = TOKEN_RIGHT_BRACKET;
+            ++ptr;
+            t->ptr = ptr;
 
             return true;
         }
@@ -374,6 +415,9 @@ bool tokenize(Tokenizer *t){
 				t->kind = TOKEN_ERROR;
 				t->id = "Number is out of range";
 			}
+
+            t->ptr = ptr;
+            return true;
         }
 
         t->kind = TOKEN_ERROR;

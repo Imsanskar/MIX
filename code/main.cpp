@@ -110,9 +110,49 @@ void interpret(MIX *mp, uint32_t address){
 
 #include <stdio.h>
 int main(){
-    const char * ptr = "LDA $   0\n";
+    const char * ptr = R"foo(
+        LDA 2000, 2(0:3)
+        STA 2000; hello there comment
+        ADD -1000
+        JMP 0
+        NOP
+        HLT
+    )foo";
     Tokenizer tokenizer = create_tokenizer(ptr);
     while(tokenize(&tokenizer)){
-
+        if (tokenizer.kind == TOKEN_ERROR) {
+			printf("\nERROR: %s\n", tokenizer.id.c_str());
+			break;
+		}
+		else if (tokenizer.kind == TOKEN_EOI) {
+			printf("\n");
+		}
+		else if (tokenizer.kind == TOKEN_NUMBER) {
+			printf("%ld ", tokenizer.value);
+		}
+		else if (tokenizer.kind == TOKEN_COLON) {
+			printf(": ");
+		}
+		else if (tokenizer.kind == TOKEN_COMMA) {
+			printf(", ");
+		}
+		else if (tokenizer.kind == TOKEN_LEFT_BRACKET) {
+			printf("( ");
+		}
+		else if (tokenizer.kind == TOKEN_RIGHT_BRACKET) {
+			printf(") ");
+		}
+		else if (tokenizer.kind == TOKEN_DOLLAR) {
+			printf("$ ");
+		}
+		else if (tokenizer.kind == TOKEN_MINUS) {
+			printf("- ");
+		}
+		else if (tokenizer.kind == TOKEN_ID) {
+			printf("%d %s ", (int32_t)tokenizer.id.size(), tokenizer.id.c_str());
+		}
+		else {
+			printf("%s ", keywords[tokenizer.kind].c_str());
+		} 
     }
 }
