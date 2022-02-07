@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 #include <stdlib.h>
-#include <string.h>
 #include <string_view>
 
 inline int is_char(char c) {
@@ -194,13 +193,6 @@ enum TokenKind{
     // compare instruction
     TOKEN_CMPA, TOKEN_CMPX, TOKEN_CMP1, TOKEN_CMP2, TOKEN_CMP3, TOKEN_CMP4, TOKEN_CMP5, TOKEN_CMP6,
 
-    // Increase decrease instruction
-    TOKEN_INCA,TOKEN_INCX,TOKEN_INC1,TOKEN_INC2,TOKEN_INC3,TOKEN_INC4,TOKEN_INC5,TOKEN_INC6,
-    
-    // Increase decrease instruction
-    TOKEN_DECA,TOKEN_DECX,TOKEN_DEC1,TOKEN_DEC2,TOKEN_DEC3,TOKEN_DEC4,TOKEN_DEC5,TOKEN_DEC6,
-
-
     // jump instruction
     TOKEN_JMP, TOKEN_JSP, TOKEN_JOV, TOKEN_JNOV, 
     TOKEN_JL, TOKEN_JE, TOKEN_JG, TOKEN_JGE, TOKEN_JNE, TOKEN_JLE,
@@ -212,6 +204,12 @@ enum TokenKind{
     TOKEN_J4N, TOKEN_J4Z, TOKEN_J4P, TOKEN_J4NN, TOKEN_J4NZ, TOKEN_J4NP,
     TOKEN_J5N, TOKEN_J5Z, TOKEN_J5P, TOKEN_J5NN, TOKEN_J5NZ, TOKEN_J5NP,
     TOKEN_J6N, TOKEN_J6Z, TOKEN_J6P, TOKEN_J6NN, TOKEN_J6NZ, TOKEN_J6NP,
+    
+    // Increase decrease instruction
+    TOKEN_INCA,TOKEN_INCX,TOKEN_INC1,TOKEN_INC2,TOKEN_INC3,TOKEN_INC4,TOKEN_INC5,TOKEN_INC6,
+    
+    // Increase decrease instruction
+    TOKEN_DECA,TOKEN_DECX,TOKEN_DEC1,TOKEN_DEC2,TOKEN_DEC3,TOKEN_DEC4,TOKEN_DEC5,TOKEN_DEC6,
 
     // shift operation
     TOKEN_SLA, TOKEN_SRA, TOKEN_SLAX, TOKEN_SRAX, TOKEN_SLC, TOKEN_SRC,

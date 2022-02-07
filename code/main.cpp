@@ -79,7 +79,7 @@ void interpret(MIX *mp, uint32_t address){
 #include <stdio.h>
 int main(){
     const char * ptr = R"foo(
-        LDA 2000, 20:3)
+        LDA 2000, 2(0:3)dasf
         STa 2000; hello there comment
         STA 2000, 2; some comment
         NOP
@@ -87,7 +87,10 @@ int main(){
     )foo";
     Parser parser = create_parser(ptr);
     bool isSuccessful = parse(&parser);
+    if(!isSuccessful){
+        printf("%*.s\n", parser.error.length(), parser.error.data());
+    }
     for(Instruction ins: parser.parsedItem){
-        int x = 0;
+        printf("%d %d %d %d\n", ins.AA, ins.I, ins.F, ins.op);
     }
 }
