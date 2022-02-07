@@ -79,16 +79,18 @@ void interpret(MIX *mp, uint32_t address){
 #include <stdio.h>
 int main(){
     const char * ptr = R"foo(
-        LDA 2000, 2(0:3)dasf
-        STa 2000; hello there comment
-        STA 2000, 2; some comment
-        NOP
-        HLT
+LDA 2000, 2(0:3)
+STa 2000; hello there comment
+ENTA 2000, 1
+INCA 20
+STA 2000, 2; some comment
+NOP
+HLT
     )foo";
     Parser parser = create_parser(ptr);
     bool isSuccessful = parse(&parser);
     if(!isSuccessful){
-        printf("%*.s\n", parser.error.length(), parser.error.data());
+        printf("%s\n", error);
     }
     for(Instruction ins: parser.parsedItem){
         printf("%d %d %d %d\n", ins.AA, ins.I, ins.F, ins.op);

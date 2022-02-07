@@ -69,6 +69,26 @@ enum Opcode{
     CMP5 = 61,
     CMP6 = 62,
 
+    ENTA = 48 | (2 << 6),
+    ENT1 = (48 + 1) | (2 << 6),
+    ENT2 = (48 + 2) | (2 << 6),
+    ENT3 = (48 + 3) | (2 << 6),
+    ENT4 = (48 + 4) | (2 << 6),
+    ENT5 = (48 + 5) | (2 << 6),
+    ENT6 = (48 + 6) | (2 << 6),
+    ENTX = (48 + 7) | (2 << 6),
+
+
+    ENNA = 48 | (3 << 6),
+    ENN1 = (48 + 1) | (3 << 6),
+    ENN2 = (48 + 2) | (3 << 6),
+    ENN3 = (48 + 3) | (3 << 6),
+    ENN4 = (48 + 4) | (3 << 6),
+    ENN5 = (48 + 5) | (3 << 6),
+    ENN6 = (48 + 6) | (3 << 6),
+    ENNX = (48 + 7) | (3 << 6),
+
+
 
     // Jump Operation
     JMP = 39, // unconditional jump
@@ -193,6 +213,10 @@ enum TokenKind{
     // compare instruction
     TOKEN_CMPA, TOKEN_CMPX, TOKEN_CMP1, TOKEN_CMP2, TOKEN_CMP3, TOKEN_CMP4, TOKEN_CMP5, TOKEN_CMP6,
 
+    // address transfer instructions
+    TOKEN_ENTA, TOKEN_ENT1, TOKEN_ENT2, TOKEN_ENT3, TOKEN_ENT4, TOKEN_ENT5, TOKEN_ENT6, TOKEN_ENTX,
+    TOKEN_ENNA, TOKEN_ENN1, TOKEN_ENN2, TOKEN_ENN3, TOKEN_ENN4, TOKEN_ENN5, TOKEN_ENN6, TOKEN_ENNX,
+
     // jump instruction
     TOKEN_JMP, TOKEN_JSJ, TOKEN_JOV, TOKEN_JNOV, 
     TOKEN_JL, TOKEN_JE, TOKEN_JG, TOKEN_JGE, TOKEN_JNE, TOKEN_JLE,
@@ -233,6 +257,9 @@ const std::string_view keywords[] =  {
     "ADD", "SUB", "MUL", "DIV",
 
     "CMPA", "CMPX", "CMP1", "CMP2", "CMP3", "CMP4", "CMP5", "CMP6",
+    
+    "ENTA", "ENT1", "ENT2", "ENT3", "ENT4", "ENT5", "ENT6", "ENTX",
+    "ENNA", "ENNA1", "ENNA2", "ENNA3", "ENNA4", "ENNA5", "ENNA6", "ENNAX",
 
     "JMP", "JSJ", "JOV", "JNOV", 
     "JL", "JE", "JG", "JGE", "JNE", "JLE",
@@ -265,6 +292,7 @@ struct Tokenizer{
     uint64_t value;
     TokenKind kind;
     uint32_t lineNumber = 0;
+    uint32_t columnNumber = 0;
 };
 
 #define ArrayCount(a) (int)(sizeof(a) / sizeof(a[0]))
@@ -291,14 +319,17 @@ bool tokenize(Tokenizer *t){
     const char* ptr = t -> ptr;
     while(*ptr){
         if(*ptr == ' ' || *ptr == '\t') {
-            while(*ptr == ' ' || *ptr == '\t') ptr++;
-            
+            while(*ptr == ' ' || *ptr == '\t') {
+                ptr++;
+                t->columnNumber += 1; 
+            }
             continue;
         }
 
         if (*ptr == '\n' || *ptr == '\r') {
 			ptr++;
             t->lineNumber += 1;
+            t->columnNumber = 0;
 			if (*ptr && *ptr == '\n') ptr++;
 			t->kind = TOKEN_EOI;
 			t->ptr = ptr;
@@ -312,7 +343,11 @@ bool tokenize(Tokenizer *t){
 
             if (*ptr) ptr++;
 
-            if (*ptr && *ptr == '\n') ptr++;
+            if (*ptr && *ptr == '\n') {
+                ptr++;
+                t->lineNumber += 1;
+                t->columnNumber = 0;
+            };
 
             t->kind = TOKEN_EOI;
             t->ptr = ptr;
@@ -322,6 +357,7 @@ bool tokenize(Tokenizer *t){
         if(is_char(*ptr)){
             const char *start = ptr;
             while(is_char(*ptr) || *ptr == '_' || is_num(*ptr)){
+                t->columnNumber += 1; 
                 ptr++;
             }
             const char *end = ptr;
@@ -342,9 +378,13 @@ bool tokenize(Tokenizer *t){
 
         if(*ptr == '$'){
             ++ptr;
-            while(*ptr == ' ' || *ptr == '\t') ptr++;
+            while(*ptr == ' ' || *ptr == '\t') {
+                ptr++;
+                t->columnNumber += 1; 
+            }
 
             if(!is_num(*ptr)){
+                t->columnNumber += 1; 
                 t->kind = TOKEN_ERROR;
                 t->id = "Number should be after a dollar sign";
 
@@ -358,6 +398,7 @@ bool tokenize(Tokenizer *t){
         }
         
         if(*ptr == '-'){
+            t->columnNumber += 1; 
             t->id = "-";
             t->kind = TOKEN_MINUS;
             ++ptr;
@@ -367,6 +408,7 @@ bool tokenize(Tokenizer *t){
         }
         
         if(*ptr == ':'){
+            t->columnNumber += 1; 
             t->id = ":";
             t->kind = TOKEN_COLON;
             ++ptr;
@@ -376,6 +418,7 @@ bool tokenize(Tokenizer *t){
         }
 
         if(*ptr == ','){
+            t->columnNumber += 1; 
             t->id = ",";
             t->kind = TOKEN_COMMA;
             ++ptr;
@@ -385,6 +428,7 @@ bool tokenize(Tokenizer *t){
         }
 
         if(*ptr == '('){
+            t->columnNumber += 1; 
             t->id = "(";
             t->kind = TOKEN_LEFT_BRACKET;
             ++ptr;
@@ -394,6 +438,7 @@ bool tokenize(Tokenizer *t){
         }
 
         if(*ptr == ')'){
+            t->columnNumber += 1; 
             t->id = ")";
             t->kind = TOKEN_RIGHT_BRACKET;
             ++ptr;
@@ -407,12 +452,13 @@ bool tokenize(Tokenizer *t){
             t->kind = TOKEN_NUMBER;
             const char *start = ptr;
             while(is_num(*ptr)){
+                t->columnNumber += 1; 
                 ptr ++;
             }
 
             t->value = strtoull(start, (char **)&t->ptr, 10);
 
-            if (errno == ERANGE || t->value > 0xffff) {
+            if (errno == ERANGE) {
 				t->kind = TOKEN_ERROR;
 				t->id = "Number is out of range";
 			}
@@ -422,7 +468,7 @@ bool tokenize(Tokenizer *t){
         }
 
         t->kind = TOKEN_ERROR;
-        t->id = "Bad Character";
+        t->id = "Character not recognized";
         return true;
 
     }

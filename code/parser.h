@@ -3,12 +3,16 @@
 #include "./tokenizer.h"
 #include "./instruction.h"
 #include <vector>
+#include <stdio.h>
 
 static Opcode opcodes[] = {
     LDA, LDX, LD1, LD2, LD3, LD4, LD5, LD6, LDAN, LD1N, LD2N, LD3N, LD4N, LD5N, LD6N, LDXN,
     STA, STX, ST1, ST2, ST3, ST4, ST5, ST6, STJ, STZ,
     ADD, SUB, MUL, DIV,
     CMPA, CMPX, CMP1, CMP2, CMP3, CMP4, CMP5, CMP6,
+
+    ENTA, ENT1, ENT2, ENT3, ENT4, ENT5, ENT6, ENTX,
+    ENNA, ENN1, ENN2, ENN3, ENN4, ENN5, ENN6, ENNX,
 
     // jump instruction
     JMP, JSJ, JOV, JNOV, 
@@ -35,6 +39,8 @@ static Opcode opcodes[] = {
     NOP, HLT,
 };
 
+char error[1024];
+
 struct Parser{
     Tokenizer tokenizer;
     bool isParsing;
@@ -49,6 +55,12 @@ Parser create_parser(std::string_view content){
     parser.tokenizer = tokenizer;
     return parser;
 } 
+
+bool getToken(Parser *parser){
+    parser->isParsing = tokenize(&parser->tokenizer);
+
+    return parser->isParsing;
+}
 
 
 bool acceptToken(Parser *parser, TokenKind kind, TokenKind *out = NULL){
@@ -73,17 +85,17 @@ bool expectToken(Parser *parser, TokenKind kind, TokenKind *out = NULL){
     return false;
 }
 
-bool parseAddressModifier(Parser *parser, Instruction *instuction){
+bool parseAddressModifier(Parser *parser, Instruction *instruction){
     if(parser->isParsing){
         uint8_t l;
         uint8_t r;
         if(expectToken(parser, TOKEN_NUMBER)){
-            instuction->AA = (uint32_t )parser->tokenizer.value;
+            instruction->AA = (uint32_t )parser->tokenizer.value;
         }
 
         if(acceptToken(parser, TOKEN_COMMA)){
             if(expectToken(parser, TOKEN_NUMBER)){
-                instuction->I = parser->tokenizer.value;
+                instruction->I = parser->tokenizer.value;
             }
         }
 
@@ -107,10 +119,10 @@ bool parseAddressModifier(Parser *parser, Instruction *instuction){
         if(!expectToken(parser, TOKEN_EOI)){
             // check if the value is correct
             // TODO: may be impement some error message here 
-            printf("%d\n", parser->tokenizer.lineNumber);
+            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
             return false;
         }
-        instuction->F = 8 * l + r;
+        instruction->F = 8 * l + r;
 
         return true;
     }
@@ -118,10 +130,31 @@ bool parseAddressModifier(Parser *parser, Instruction *instuction){
     return false;
 }
 
-bool parseIncrementDecrement(Parser *parser, Instruction *instruction){
+bool parseIncrementDecrement(Parser *parser, Instruction *instruction, uint8_t no_of_bits = 2){
     if(parser->isParsing){
+        if(acceptToken(parser, TOKEN_MINUS)){
+            // 1 in bit 12 means negative operand
+            instruction->AA = instruction->AA | (1 << 12);
+        }
+        if(expectToken(parser, TOKEN_NUMBER)){
+            instruction->AA |= (uint32_t )parser->tokenizer.value;
+        }
+        else{
+            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+        }
+        if(acceptToken(parser, TOKEN_COMMA)){
+            if(expectToken(parser, TOKEN_NUMBER)){
+                instruction->I = parser->tokenizer.value;
+            }
+            else {
+                sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+            }
+        }
         if(expectToken(parser, TOKEN_EOI)){
             return true;
+        }
+        else{
+            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
         }
     }
     return false;
@@ -132,6 +165,9 @@ bool parserJumpOperation(Parser *parser, Instruction *instruction){
         if(expectToken(parser, TOKEN_NUMBER)){
             instruction->AA = TOKEN_NUMBER;
         }
+        else{
+            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+        }
     }
     return false;
 }
@@ -141,7 +177,34 @@ bool parserRotateOperation(Parser *parser, Instruction *instruction){
         if(expectToken(parser, TOKEN_NUMBER)){
             instruction->AA = TOKEN_NUMBER;
         }
+        else{
+            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+        }
     }
+    return false;
+}
+
+bool parseAddressTransferInstruction(Parser *parser, Instruction *instruction){
+    if(parser->isParsing){
+        if(acceptToken(parser, TOKEN_MINUS)){
+            // 1 in bit 31 means negative
+            instruction->AA = instruction->AA | (1 << 30);
+        }
+        if(expectToken(parser, TOKEN_NUMBER)){
+            instruction->AA |= (uint32_t )parser->tokenizer.value;
+        }
+        else  {
+            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+        }
+        if(acceptToken(parser, TOKEN_COMMA)){
+            if(expectToken(parser, TOKEN_NUMBER)){
+                instruction->I = parser->tokenizer.value;
+            }
+        }
+        
+
+    }
+
     return false;
 }
 
@@ -151,442 +214,39 @@ bool parse(Parser *parser){
     parser->isParsing = tokenize(&parser->tokenizer);
     while(parser->isParsing){
         // load and store instruction
-#if 0
-        if (acceptToken(parser, TOKEN_LDA)){
-            is.op = LDA;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_LD1)){
-            is.op = LD1;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD2)){
-            is.op = LD2;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD3)){
-            is.op = LD3;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD4)){
-            is.op = LD4;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD5)){
-            is.op = LD5;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD6)){
-            is.op = LD6;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LDX)){
-            is.op = LDX;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LDAN)){
-            is.op = LDAN;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LDXN)){
-            is.op = LDXN;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD1N)){
-            is.op = LD1N;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD2N)){
-            is.op = LD2N;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD3N)){
-            is.op = LD3N;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD4N)){
-            is.op = LD4N;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD5N)){
-            is.op = LD5N;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_LD6N)){
-            is.op = LD6N;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if (acceptToken(parser, TOKEN_STA)){
-            is.op = STA;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_ST1)){
-            is.op = ST1;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_ST2)){
-            is.op = ST2;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_ST3)){
-            is.op = ST3;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_ST4)){
-            is.op = ST4;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_ST5)){
-            is.op = ST5;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_ST6)){
-            is.op = ST6;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_STX)){
-            is.op = STX;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_STJ)){
-            is.op = STJ;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        else if(acceptToken(parser, TOKEN_STZ)){
-            is.op = STZ;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else{
-                return false;
-            }
-
-        }
-        //Arithmetic instructions
-        else if(acceptToken(parser, TOKEN_ADD)){
-            is.op = ADD;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_SUB)){
-            is.op = SUB;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_MUL)){
-            is.op = MUL;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DIV)){
-            is.op = DIV;
-            if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }else {
-                return false;
-            }
-        }
-
-        // increase decrease instruction
-        else if(acceptToken(parser, TOKEN_DECA)){
-            is.op = DECA;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DECX)){
-            is.op = DECX;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DEC1)){
-            is.op = DEC1;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DEC2)){
-            is.op = DEC2;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DEC3)){
-            is.op = DEC3;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DEC4)){
-            is.op = DEC4;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DEC5)){
-            is.op = DEC5;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_DEC6)){
-            is.op = DEC6;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        // increase decrease instruction
-        else if(acceptToken(parser, TOKEN_INCA)){
-            is.op = INCA;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_INCX)){
-            is.op = INCX;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_INC1)){
-            is.op = INC1;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_INC2)){
-            is.op = INC2;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_INC3)){
-            is.op = INC3;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_INC4)){
-            is.op = INC4;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_INC5)){
-            is.op = INC5;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-        else if(acceptToken(parser, TOKEN_INC6)){
-            is.op = INC6;
-            if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
-            }
-            else {
-                return false;
-            }
-        }
-
-#endif
-        if(parser->tokenizer.kind <= TOKEN_DIV){
+        if(parser->tokenizer.kind <= TOKEN_CMP6){
             is.op = opcodes[parser->tokenizer.kind];
+            getToken(parser);
             if(parseAddressModifier(parser, &is)){
                 parser->parsedItem.push_back(is);
             }
         }
-        else if(parser->tokenizer.kind <= TOKEN_INC6 && parser->tokenizer.kind >= TOKEN_INCA){
+        else if(parser->tokenizer.kind <= TOKEN_DEC6 && parser->tokenizer.kind >= TOKEN_INCA){
             is.op = opcodes[parser->tokenizer.kind];
+            getToken(parser);
             if(parseIncrementDecrement(parser, &is)){
                 parser->parsedItem.push_back(is);
             }
         }
         else if(parser->tokenizer.kind <= TOKEN_J6NP && parser->tokenizer.kind >=TOKEN_JMP){
             is.op = opcodes[parser->tokenizer.kind];
+            getToken(parser);
             if(parserJumpOperation(parser, &is)){
                 parser->parsedItem.push_back(is);
             }
         }
         else if(parser->tokenizer.kind <= TOKEN_SRC && parser->tokenizer.kind >=TOKEN_SLA){
             is.op = opcodes[parser->tokenizer.kind];
-            if(parserJumpOperation(parser, &is)){
+            getToken(parser);
+            if(parserRotateOperation(parser, &is)){
+                parser->parsedItem.push_back(is);
+            }
+        }
+        else if(parser->tokenizer.kind <= TOKEN_ENNX && parser->tokenizer.kind >= TOKEN_ENTA){
+            is.op = opcodes[parser->tokenizer.kind];
+            is.F = opcodes[parser->tokenizer.kind] >> 6;
+            getToken(parser);
+            if(parseAddressTransferInstruction(parser, &is)){
                 parser->parsedItem.push_back(is);
             }
         }
@@ -604,9 +264,12 @@ bool parse(Parser *parser){
             parser->parsedItem.push_back(is);
             return true;
         }
+        else if (acceptToken(parser, TOKEN_ERROR)){
+            sprintf(error, "Unidentified character, LINE: %d, column: %d", parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+            return false;
+        }
 
         else {
-            return false;
         }
 
         // reset instruction 
