@@ -194,7 +194,7 @@ enum TokenKind{
     TOKEN_CMPA, TOKEN_CMPX, TOKEN_CMP1, TOKEN_CMP2, TOKEN_CMP3, TOKEN_CMP4, TOKEN_CMP5, TOKEN_CMP6,
 
     // jump instruction
-    TOKEN_JMP, TOKEN_JSP, TOKEN_JOV, TOKEN_JNOV, 
+    TOKEN_JMP, TOKEN_JSJ, TOKEN_JOV, TOKEN_JNOV, 
     TOKEN_JL, TOKEN_JE, TOKEN_JG, TOKEN_JGE, TOKEN_JNE, TOKEN_JLE,
     TOKEN_JAN, TOKEN_JAZ, TOKEN_JAP, TOKEN_JANN, TOKEN_JNZ, TOKEN_JANP,
     TOKEN_JXN, TOKEN_JXZ, TOKEN_JXP, TOKEN_JXNN, TOKEN_JXNZ, TOKEN_JXNP,
@@ -234,7 +234,7 @@ const std::string_view keywords[] =  {
 
     "CMPA", "CMPX", "CMP1", "CMP2", "CMP3", "CMP4", "CMP5", "CMP6",
 
-    "JMP", "JSP", "JOV", "JNOV", 
+    "JMP", "JSJ", "JOV", "JNOV", 
     "JL", "JE", "JG", "JGE", "JNE", "JLE",
     "JAN", "JAZ", "JAP", "JANN", "JNZ", "JANP",
     "JXN", "JXZ", "JXP", "JXNN", "JXNZ", "JXNP",
@@ -264,6 +264,7 @@ struct Tokenizer{
     std::string id;
     uint64_t value;
     TokenKind kind;
+    uint32_t lineNumber = 0;
 };
 
 #define ArrayCount(a) (int)(sizeof(a) / sizeof(a[0]))
@@ -297,6 +298,7 @@ bool tokenize(Tokenizer *t){
 
         if (*ptr == '\n' || *ptr == '\r') {
 			ptr++;
+            t->lineNumber += 1;
 			if (*ptr && *ptr == '\n') ptr++;
 			t->kind = TOKEN_EOI;
 			t->ptr = ptr;

@@ -4,11 +4,41 @@
 #include "./instruction.h"
 #include <vector>
 
+static Opcode opcodes[] = {
+    LDA, LDX, LD1, LD2, LD3, LD4, LD5, LD6, LDAN, LD1N, LD2N, LD3N, LD4N, LD5N, LD6N, LDXN,
+    STA, STX, ST1, ST2, ST3, ST4, ST5, ST6, STJ, STZ,
+    ADD, SUB, MUL, DIV,
+    CMPA, CMPX, CMP1, CMP2, CMP3, CMP4, CMP5, CMP6,
+
+    // jump instruction
+    JMP, JSJ, JOV, JNOV, 
+    JL, JE, JG, JGE, JNE, JLE,
+    JAN, JAZ, JAP, JANN, JNZ, JANP,
+    JXN, JXZ, JXP, JXNN, JXNZ, JXNP,
+    J1N, J1Z, J1P, J1NN, J1NZ, J1NP,
+    J2N, J2Z, J2P, J2NN, J2NZ, J2NP,
+    J3N, J3Z, J3P, J3NN, J3NZ, J3NP,
+    J4N, J4Z, J4P, J4NN, J4NZ, J4NP,
+    J5N, J5Z, J5P, J5NN, J5NZ, J5NP,
+    J6N, J6Z, J6P, J6NN, J6NZ, J6NP,
+    
+    // Increase decrease instruction
+    INCA,INCX,INC1,INC2,INC3,INC4,INC5,INC6,
+    
+    // Increase decrease instruction
+    DECA,DECX,DEC1,DEC2,DEC3,DEC4,DEC5,DEC6,
+
+    // shift operation
+    SLA, SRA, SLAX, SRAX, SLC, SRC,
+
+    // halt and no op 
+    NOP, HLT,
+};
+
 struct Parser{
     Tokenizer tokenizer;
     bool isParsing;
     std::vector <uint64_t> parsedItem;
-    int line_number = 0;
     std::string_view error;
 };  
 
@@ -77,6 +107,7 @@ bool parseAddressModifier(Parser *parser, Instruction *instuction){
         if(!expectToken(parser, TOKEN_EOI)){
             // check if the value is correct
             // TODO: may be impement some error message here 
+            printf("%d\n", parser->tokenizer.lineNumber);
             return false;
         }
         instuction->F = 8 * l + r;
@@ -87,10 +118,28 @@ bool parseAddressModifier(Parser *parser, Instruction *instuction){
     return false;
 }
 
-bool parseIncrementDecrement(Parser *parser, Instruction *Instruction){
+bool parseIncrementDecrement(Parser *parser, Instruction *instruction){
     if(parser->isParsing){
         if(expectToken(parser, TOKEN_EOI)){
             return true;
+        }
+    }
+    return false;
+}
+
+bool parserJumpOperation(Parser *parser, Instruction *instruction){
+    if(parser->isParsing){
+        if(expectToken(parser, TOKEN_NUMBER)){
+            instruction->AA = TOKEN_NUMBER;
+        }
+    }
+    return false;
+}
+
+bool parserRotateOperation(Parser *parser, Instruction *instruction){
+    if(parser->isParsing){
+        if(expectToken(parser, TOKEN_NUMBER)){
+            instruction->AA = TOKEN_NUMBER;
         }
     }
     return false;
@@ -102,6 +151,7 @@ bool parse(Parser *parser){
     parser->isParsing = tokenize(&parser->tokenizer);
     while(parser->isParsing){
         // load and store instruction
+#if 0
         if (acceptToken(parser, TOKEN_LDA)){
             is.op = LDA;
             if(parseAddressModifier(parser, &is)){
@@ -515,11 +565,34 @@ bool parse(Parser *parser){
             }
         }
 
-
-
+#endif
+        if(parser->tokenizer.kind <= TOKEN_DIV){
+            is.op = opcodes[parser->tokenizer.kind];
+            if(parseAddressModifier(parser, &is)){
+                parser->parsedItem.push_back(is);
+            }
+        }
+        else if(parser->tokenizer.kind <= TOKEN_INC6 && parser->tokenizer.kind >= TOKEN_INCA){
+            is.op = opcodes[parser->tokenizer.kind];
+            if(parseIncrementDecrement(parser, &is)){
+                parser->parsedItem.push_back(is);
+            }
+        }
+        else if(parser->tokenizer.kind <= TOKEN_J6NP && parser->tokenizer.kind >=TOKEN_JMP){
+            is.op = opcodes[parser->tokenizer.kind];
+            if(parserJumpOperation(parser, &is)){
+                parser->parsedItem.push_back(is);
+            }
+        }
+        else if(parser->tokenizer.kind <= TOKEN_SRC && parser->tokenizer.kind >=TOKEN_SLA){
+            is.op = opcodes[parser->tokenizer.kind];
+            if(parserJumpOperation(parser, &is)){
+                parser->parsedItem.push_back(is);
+            }
+        }
         // token end of instruction
         else if(acceptToken(parser, TOKEN_EOI)){
-            parser->line_number += 1; 
+
         }
         else if(acceptToken(parser, TOKEN_NOP)){
             is.op = NOP;
@@ -531,6 +604,7 @@ bool parse(Parser *parser){
             parser->parsedItem.push_back(is);
             return true;
         }
+
         else {
             return false;
         }
