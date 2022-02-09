@@ -1,9 +1,9 @@
 #pragma once
 #include <stdint.h>
-#include <string>
 #include <vector>
 #include <stdlib.h>
 #include <string_view>
+#include <string>
 
 #ifdef EMSCRIPTEN
 #include "emscripten.h"
@@ -293,7 +293,7 @@ const std::string_view keywords[] =  {
 
 struct Tokenizer{
     const char *ptr;
-    std::string id;
+    std::string_view id;
     uint64_t value;
     TokenKind kind;
     uint32_t lineNumber = 0;
@@ -366,7 +366,7 @@ bool tokenize(Tokenizer *t){
                 ptr++;
             }
             const char *end = ptr;
-            t->id = std::string(start, end);
+            t->id = std::string_view(start, end - start);
             t->kind = TOKEN_ID;
 
             for(int i = 0; i < (int)ArrayCount(keywords); i++){
