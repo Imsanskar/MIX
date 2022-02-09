@@ -6,27 +6,38 @@
 #include <vector>
 #include "./MIX.h"
 
+char * read_from_file(const char *file_name, char *code) {
+    FILE * file = fopen(file_name, "r");
+    
+    if(!file) {
+        printf("Could not open file\n");
+        exit(-1);
+    }
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    code  = (char *)malloc(fsize + 2);
+    fread(code, fsize, 1, file);
 
-        // ;LDA 2000(1:5)
-        // ;LDA 2000(3:5)
-        // ;LDA 2000(0:3)
-        // ;LDA 2000(1:1)
+    fclose(file);
+    code[fsize] = '\0';
+
+    return code;
+}
+
 
 
 #include <stdio.h>
 int main(int argc, char *argv[]){
-    const char * ptr = R"foo(
-ORIG 500
-NEXT    LDA 2000
-        JMP NEXT
-        JMP NEXT_2
-
-NEXT_2  LDA 2000(1:1)
-HLT
-    )foo";
-    printf("%s\n", ptr);
+    if (argc < 2){
+        printf("Usage: MIX <filename>");
+    }
+    char *code;
+    code = read_from_file(argv[1], code);
+    
+    printf("%s\n", code);
     MIX mp;
-    Parser parser = create_parser(ptr);
+    Parser parser = create_parser(code);
     bool isSuccessful = parse(&parser, &mp);
     mp.memory[2000] = Memory(5, 3, -80, (Opcode) 4);
     

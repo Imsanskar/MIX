@@ -91,8 +91,8 @@ bool expectToken(Parser *parser, TokenKind kind, TokenKind *out = NULL){
 
 bool parseAddressModifier(Parser *parser, Memory *instruction){
     if(parser->isParsing){
-        uint8_t l;
-        uint8_t r;
+        uint8_t l = 0;
+        uint8_t r = 0;
         if(expectToken(parser, TOKEN_NUMBER)){
             instruction->AA = (uint32_t )parser->tokenizer.value;
         }
@@ -259,7 +259,11 @@ bool parse(Parser *parser, MIX *mp){
 
         // labels can be only at the beginning of the line
         const std::string_view label = parser->tokenizer.id;
-        // original address
+        is.F = 0;
+        is.AA = 0;
+        is.I = 0;
+
+        // original starting address
         if(acceptToken(parser, TOKEN_ORIG)){
             if(expectToken(parser, TOKEN_NUMBER)){
                 if (parser->tokenizer.value > 4095) {
