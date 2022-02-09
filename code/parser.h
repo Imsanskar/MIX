@@ -4,6 +4,8 @@
 #include "./instruction.h"
 #include <vector>
 #include <stdio.h>
+#include "MIX.h"
+#include <unordered_map>
 
 static Opcode opcodes[] = {
     LDA, LDX, LD1, LD2, LD3, LD4, LD5, LD6, LDAN, LD1N, LD2N, LD3N, LD4N, LD5N, LD6N, LDXN,
@@ -40,12 +42,14 @@ static Opcode opcodes[] = {
 };
 
 char error[1024];
+std::unordered_map<std::string, int32_t> unfound_labels;
 
 struct Parser{
     Tokenizer tokenizer;
     bool isParsing;
-    std::vector <uint64_t> parsedItem;
+    std::vector <Memory> parsedItem;
     std::string_view error;
+    std::unordered_map<std::string, uint32_t> labels;
 };  
 
 
@@ -85,7 +89,7 @@ bool expectToken(Parser *parser, TokenKind kind, TokenKind *out = NULL){
     return false;
 }
 
-bool parseAddressModifier(Parser *parser, Instruction *instruction){
+bool parseAddressModifier(Parser *parser, Memory *instruction){
     if(parser->isParsing){
         uint8_t l;
         uint8_t r;
@@ -105,21 +109,36 @@ bool parseAddressModifier(Parser *parser, Instruction *instruction){
             if(expectToken(parser, TOKEN_NUMBER)){
                 l = parser->tokenizer.value; 
             }
+            else {
+                sprintf(error, "Syntax error: Expected number got something else, LINE: %d, column: %d", parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+                return false;
+            }
             if(expectToken(parser, TOKEN_COLON)){
                 // l = parser->tokenizer.value; 
+            }
+            else {
+                sprintf(error, "Syntax error: Expected colon got something else, LINE: %d, column: %d", parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+                return false;
             }
             if(expectToken(parser, TOKEN_NUMBER)){
                 r = parser->tokenizer.value; 
             }
+            else {
+                return false;
+            }
             if(expectToken(parser, TOKEN_RIGHT_BRACKET)){
                 // check if the bracket if complete
+            }
+            else {
+                sprintf(error, "Syntax error: Unmatched bracket, LINE: %d, column: %d", parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+                return false;
             }
         }
 
         if(!expectToken(parser, TOKEN_EOI)){
             // check if the value is correct
             // TODO: may be impement some error message here 
-            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+            sprintf(error, "Syntax error: Expected Newline got %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
             return false;
         }
         instruction->F = 8 * l + r;
@@ -130,7 +149,7 @@ bool parseAddressModifier(Parser *parser, Instruction *instruction){
     return false;
 }
 
-bool parseIncrementDecrement(Parser *parser, Instruction *instruction, uint8_t no_of_bits = 2){
+bool parseIncrementDecrement(Parser *parser, Memory *instruction, uint8_t no_of_bits = 2){
     if(parser->isParsing){
         if(acceptToken(parser, TOKEN_MINUS)){
             // 1 in bit 12 means negative operand
@@ -160,7 +179,41 @@ bool parseIncrementDecrement(Parser *parser, Instruction *instruction, uint8_t n
     return false;
 }
 
-bool parserJumpOperation(Parser *parser, Instruction *instruction){
+bool parserJumpOperation(Parser *parser, Memory *instruction, int32_t address){
+    if(parser->isParsing){
+        // getToken(parser);
+        if(parser->tokenizer.kind == TOKEN_NUMBER){
+            instruction->AA = TOKEN_NUMBER;
+        }
+        else if(parser->tokenizer.kind == TOKEN_ID){
+            if(parser->labels.find(parser->tokenizer.id) != parser->labels.end()){
+                instruction->AA = parser->labels[parser->tokenizer.id];
+            }
+            else{
+                unfound_labels[parser->tokenizer.id] = address;
+            }
+        }
+        else{
+            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+        }
+        getToken(parser);
+        if(acceptToken(parser, TOKEN_COMMA)){
+            if(expectToken(parser, TOKEN_NUMBER)){
+                instruction->I = parser->tokenizer.value;
+            }
+        }
+
+        if(!expectToken(parser, TOKEN_EOI)){
+            sprintf(error, "Syntax error: Expected Newline got %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+            return false;
+        }
+
+        return true;
+    }
+    return false;
+}
+
+bool parserRotateOperation(Parser *parser, Memory *instruction){
     if(parser->isParsing){
         if(expectToken(parser, TOKEN_NUMBER)){
             instruction->AA = TOKEN_NUMBER;
@@ -172,19 +225,8 @@ bool parserJumpOperation(Parser *parser, Instruction *instruction){
     return false;
 }
 
-bool parserRotateOperation(Parser *parser, Instruction *instruction){
-    if(parser->isParsing){
-        if(expectToken(parser, TOKEN_NUMBER)){
-            instruction->AA = TOKEN_NUMBER;
-        }
-        else{
-            sprintf(error, "Syntax error: %s, LINE: %d, column: %d", parser->tokenizer.id.c_str(), parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
-        }
-    }
-    return false;
-}
 
-bool parseAddressTransferInstruction(Parser *parser, Instruction *instruction){
+bool parseAddressTransferInstruction(Parser *parser, Memory *instruction){
     if(parser->isParsing){
         if(acceptToken(parser, TOKEN_MINUS)){
             // 1 in bit 31 means negative
@@ -209,73 +251,122 @@ bool parseAddressTransferInstruction(Parser *parser, Instruction *instruction){
 }
 
 
-bool parse(Parser *parser){
-    Instruction is;
+bool parse(Parser *parser, MIX *mp){
+    Memory is;
     parser->isParsing = tokenize(&parser->tokenizer);
+    int32_t initial_address = 0;
     while(parser->isParsing){
+
+        // labels can be only at the beginning of the line
+        const std::string label = parser->tokenizer.id;
+        // original address
+        if(acceptToken(parser, TOKEN_ORIG)){
+            if(expectToken(parser, TOKEN_NUMBER)){
+                if (parser->tokenizer.value > 4095) {
+                    sprintf(error, "Syntax error: address can't be greater than 4095, LINE: %d, column: %d", parser->tokenizer.columnNumber, parser->tokenizer.lineNumber);
+                    return false;
+                }
+            }
+            initial_address = parser->tokenizer.value;
+            mp->pc = initial_address;
+        }
         // load and store instruction
-        if(parser->tokenizer.kind <= TOKEN_CMP6){
+        else if(parser->tokenizer.kind <= TOKEN_CMP6){
             is.op = opcodes[parser->tokenizer.kind];
             getToken(parser);
             if(parseAddressModifier(parser, &is)){
-                parser->parsedItem.push_back(is);
+                mp->memory[initial_address++] = is;
+            }
+            else {
+                return false;
             }
         }
         else if(parser->tokenizer.kind <= TOKEN_DEC6 && parser->tokenizer.kind >= TOKEN_INCA){
             is.op = opcodes[parser->tokenizer.kind];
             getToken(parser);
             if(parseIncrementDecrement(parser, &is)){
-                parser->parsedItem.push_back(is);
+                mp->memory[initial_address++] = is;
+            }
+            else {
+                return false;
             }
         }
         else if(parser->tokenizer.kind <= TOKEN_J6NP && parser->tokenizer.kind >=TOKEN_JMP){
             is.op = opcodes[parser->tokenizer.kind];
             getToken(parser);
-            if(parserJumpOperation(parser, &is)){
-                parser->parsedItem.push_back(is);
+            is.F = opcodes[parser->tokenizer.kind] >> 6;
+            if(parserJumpOperation(parser, &is, initial_address)){
+                mp->memory[initial_address++] = is;
+            }
+            else {
+                return false;
             }
         }
         else if(parser->tokenizer.kind <= TOKEN_SRC && parser->tokenizer.kind >=TOKEN_SLA){
             is.op = opcodes[parser->tokenizer.kind];
             getToken(parser);
             if(parserRotateOperation(parser, &is)){
-                parser->parsedItem.push_back(is);
+                mp->memory[initial_address++] = is;
+            }
+            else {
+                return false;
             }
         }
         else if(parser->tokenizer.kind <= TOKEN_ENNX && parser->tokenizer.kind >= TOKEN_ENTA){
             is.op = opcodes[parser->tokenizer.kind];
             is.F = opcodes[parser->tokenizer.kind] >> 6;
-            getToken(parser);
+            // getToken(parser);
             if(parseAddressTransferInstruction(parser, &is)){
-                parser->parsedItem.push_back(is);
+                mp->memory[initial_address++] = is;
+            }
+            else {
+                return false;
             }
         }
         // token end of instruction
         else if(acceptToken(parser, TOKEN_EOI)){
+            
+        }
+        else if(acceptToken(parser, TOKEN_ID)){
+                if(parser->labels.find(label) == parser->labels.end()){
+                    parser->labels[label] = initial_address;
 
+                }
+                else{
+                    sprintf(error, "Multiple lables defined, LINE: %d, column: %d", parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
+                    return false;
+                }
         }
         else if(acceptToken(parser, TOKEN_NOP)){
             is.op = NOP;
-            parser->parsedItem.push_back(is);
+            mp->memory[initial_address++] = is;
         }
         else if(acceptToken(parser, TOKEN_HLT)){
             parser->isParsing = false;
             is.op = HLT;
-            parser->parsedItem.push_back(is);
-            return true;
+            mp->memory[initial_address++] = is;
+            break;
         }
         else if (acceptToken(parser, TOKEN_ERROR)){
             sprintf(error, "Unidentified character, LINE: %d, column: %d", parser->tokenizer.lineNumber, parser->tokenizer.columnNumber);
             return false;
         }
-
         else {
+            break;
         }
+
 
         // reset instruction 
         is.F = 0;
         is.I = 0;
         is.AA = 0;
     }
-    return parser->isParsing;
+
+    // resolve Jump labels
+    for(auto pair: unfound_labels){
+        if(parser->labels.find(pair.first) != parser->labels.end()){
+            mp->memory[pair.second].AA = parser->labels[pair.first];
+        }
+    }
+    return true;
 }

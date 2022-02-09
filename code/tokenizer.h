@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <string_view>
 
+#ifdef EMSCRIPTEN
+#include "emscripten.h"
+#endif
+// emscripten removes all the dead code that hat are not called from the compiled code. 
+// While this does minimize code size, it can remove functions that you plan to call yourself (outside of the compiled code).
 inline int is_char(char c) {
 	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
@@ -241,7 +246,7 @@ enum TokenKind{
     // halt and no op 
     TOKEN_NOP, TOKEN_HLT,
 
-    TOKEN_REG_A, TOKEN_REG_X, TOKEN_REG_I1, TOKEN_REG_I2, TOKEN_REG_I3, TOKEN_REG_I4, TOKEN_REG_I5, TOKEN_REG_I6,
+    TOKEN_REG_A, TOKEN_REG_X, TOKEN_REG_I1, TOKEN_REG_I2, TOKEN_REG_I3, TOKEN_REG_I4, TOKEN_REG_I5, TOKEN_REG_I6, TOKEN_ORIG,
 
     TOKEN_ID, TOKEN_COLON, TOKEN_DOLLAR, TOKEN_NUMBER, TOKEN_INDIRECT_NUMBER, TOKEN_COMMA, TOKEN_LEFT_BRACKET, TOKEN_RIGHT_BRACKET, 
     TOKEN_MINUS,
@@ -282,7 +287,7 @@ const std::string_view keywords[] =  {
     "SLA", "SRA", "SLAX", "SRAX", "SLC", "SRC",
     "NOP", "HLT",
 
-    "rA", "rX", "rI1", "rI2", "rI3", "rI4", "rI5", "rI6",
+    "rA", "rX", "rI1", "rI2", "rI3", "rI4", "rI5", "rI6", "ORIG"
 };
 
 
@@ -296,9 +301,9 @@ struct Tokenizer{
 };
 
 #define ArrayCount(a) (int)(sizeof(a) / sizeof(a[0]))
-#define min(a, b) a < b? a: b
+#define minimum(a, b) a < b? a: b
 
-bool is_equal_case_insensitive(std::string_view s1, const std::string s2){
+bool is_equal_case_insensitive(std::string_view s1, const std::string_view s2){
     const int size_1 = s1.size();
     const int size_2 = s2.size();
 
