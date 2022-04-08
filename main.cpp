@@ -1,18 +1,20 @@
 #include <inttypes.h>
 #include <stdlib.h>
-#include "./tokenizer.h"
-#include "./parser.h"
-#include "./instruction.h"
+#include "tokenizer.h"
+#include "parser.h"
+#include "instruction.h"
 #include <vector>
-#include "./MIX.h"
+#include "MIX.h"
 
-char * read_from_file(const char *file_name, char *code) {
+char* read_from_file(const char *file_name) {
     FILE * file = fopen(file_name, "r");
     
     if(!file) {
         printf("Could not open file\n");
         exit(-1);
     }
+
+    char *code;
     fseek(file, 0, SEEK_END);
     long fsize = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -26,20 +28,22 @@ char * read_from_file(const char *file_name, char *code) {
 }
 
 
-
+// #if 0
 #include <stdio.h>
 int main(int argc, char *argv[]){
     if (argc < 2){
         printf("Usage: MIX <filename>");
     }
     char *code;
-    code = read_from_file(argv[1], code);
+    code = read_from_file(argv[1]);
     
     printf("%s\n", code);
     MIX mp;
     Parser parser = create_parser(code);
     bool isSuccessful = parse(&parser, &mp);
     mp.memory[2000] = Memory(5, 3, -80, (Opcode) 4);
+
+    free(code);
     
     if(!isSuccessful){
         printf("ERROR\n");
@@ -55,3 +59,4 @@ int main(int argc, char *argv[]){
         i++;
     }
 }
+

@@ -254,6 +254,7 @@ bool parseAddressTransferInstruction(Parser *parser, Memory *instruction){
 bool parse(Parser *parser, MIX *mp){
     Memory is;
     parser->isParsing = tokenize(&parser->tokenizer);
+    bool starting_flag = false;
     int32_t initial_address = 0;
     while(parser->isParsing){
 
@@ -272,7 +273,10 @@ bool parse(Parser *parser, MIX *mp){
                 }
             }
             initial_address = parser->tokenizer.value;
-            mp->pc = initial_address;
+            if (!starting_flag){
+                starting_flag = true;
+                mp->pc = initial_address;
+            }
         }
         // load and store instruction
         else if(parser->tokenizer.kind <= TOKEN_CMP6){
@@ -365,10 +369,11 @@ bool parse(Parser *parser, MIX *mp){
     }
 
     // resolve Jump labels
-    for(auto pair: unfound_labels){
-        if(parser->labels.find(pair.first) != parser->labels.end()){
-            mp->memory[pair.second].AA = parser->labels[pair.first];
+    for(auto &labels: unfound_labels){
+        if(parser->labels.find(labels.first) != parser->labels.end()){
+            mp->memory[labels.second].AA = parser->labels[labels.first];
         }
     }
+
     return true;
 }

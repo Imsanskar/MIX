@@ -5,11 +5,6 @@
 #include <string_view>
 #include <string>
 
-#ifdef EMSCRIPTEN
-#include "emscripten.h"
-#endif
-// emscripten removes all the dead code that hat are not called from the compiled code. 
-// While this does minimize code size, it can remove functions that you plan to call yourself (outside of the compiled code).
 inline int is_char(char c) {
 	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
