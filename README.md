@@ -1,2 +1,2 @@
 # A MIX Simulator
-A Work under progress
+An interpreter for MIX computer described by Donald Knuth
